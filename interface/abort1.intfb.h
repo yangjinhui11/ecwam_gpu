@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE ABORT1
+ END SUBROUTINE ABORT1
+end interface

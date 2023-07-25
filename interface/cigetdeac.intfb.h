@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE CIGETDEAC
+ END SUBROUTINE CIGETDEAC
+end interface

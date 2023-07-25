@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE MCOUT
+ END SUBROUTINE MCOUT
+end interface

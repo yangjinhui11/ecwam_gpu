@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE SECONDHH_GEN
+ END SUBROUTINE SECONDHH_GEN
+end interface

@@ -1,0 +1,16 @@
+interface
+SUBROUTINE SAVSTRESS(WVENVI, FF_NOW, NBLKS, NBLKE, CDTPRO, CDATEF)
+ use parkind_wave, only:&
+ & jwim
+ USE YOWDRVTYPE , ONLY : ENVIRONMENT, FORCING_FIELDS
+ use yowgrid , only:&
+ & nproma_wam,&
+ & nchnk
+ use yowmpp , only:&
+ & nproc
+TYPE(ENVIRONMENT), INTENT(IN) :: WVENVI
+      TYPE(FORCING_FIELDS), INTENT(IN) :: FF_NOW
+      INTEGER(KIND=JWIM), DIMENSION(NPROC),INTENT(IN) :: NBLKS, NBLKE
+      CHARACTER(LEN=14), INTENT(IN) :: CDTPRO, CDATEF
+END SUBROUTINE SAVSTRESS
+end interface

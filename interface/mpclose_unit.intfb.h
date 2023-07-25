@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE MPCLOSE_UNIT
+ END SUBROUTINE MPCLOSE_UNIT
+end interface

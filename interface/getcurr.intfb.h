@@ -1,0 +1,21 @@
+interface
+SUBROUTINE GETCURR(LWCUR, IREAD, BLK2LOC,            &
+ &                 NXS, NXE, NYS, NYE, FIELDG,       &
+ &                 NEMO2WAM, WVENVI)
+ use parkind_wave, only:&
+ & jwim,&
+ & jwrb,&
+ & jwro
+USE YOWDRVTYPE  , ONLY : FORCING_FIELDS, WVGRIDLOC, ENVIRONMENT, OCEAN2WAVE
+ use yowgrid , only:&
+ & nproma_wam,&
+ & nchnk
+    INTEGER(KIND=JWIM), INTENT(IN) :: IREAD
+      LOGICAL, INTENT(IN) :: LWCUR
+      TYPE(WVGRIDLOC), INTENT(IN) :: BLK2LOC
+      TYPE(ENVIRONMENT), INTENT(INOUT) :: WVENVI
+      INTEGER(KIND=JWIM), INTENT(IN) :: NXS, NXE, NYS, NYE
+      TYPE(FORCING_FIELDS), INTENT(IN) :: FIELDG
+      TYPE(OCEAN2WAVE), INTENT(IN) :: NEMO2WAM
+END SUBROUTINE GETCURR
+end interface

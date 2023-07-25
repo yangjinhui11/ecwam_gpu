@@ -1,0 +1,58 @@
+interface
+SUBROUTINE WAVEMDL (CBEGDAT, PSTEP, KSTOP, KSTPW,                 &
+     &              NFIELDS, NGPTOTG, NC, NR,                     &
+     &              IGRIB_HANDLE, RMISS, ZRCHAR, FIELDS,          &
+     &              NATMFLX,                                      &
+     &              LWCUR, LWSTOKES,                              &
+     &              NWVFIELDS, WVFLDG,                            &
+     &              NLONW, NLATW, LDSTOP, LDWRRE,                 &
+     &              LDRESTARTED, ZDELATM,                         &
+     &              LDWCOUNORMS, LDNORMWAMOUT_GLOBAL,             &
+     &              MASK_IN, MASK_OUT,                            &
+     &              FRSTIME, NADV, PRPLRADI, PRPLRG,              &
+     &              RNU_ATM, RNUM_ATM,                            &
+     &              IDATE_TIME_WINDOW_END, NSTEP,                 &
+     &              LDIFS_IO_SERV_ENABLED, TIME1 )
+ use parkind_wave, only:&
+ & jwim,&
+ & jwrb
+      CHARACTER(LEN=14), INTENT(IN) :: CBEGDAT
+      REAL(KIND=JWRB), INTENT(IN) :: PSTEP
+      INTEGER(KIND=JWIM), INTENT(IN) :: KSTOP
+      INTEGER(KIND=JWIM), INTENT(IN) :: KSTPW
+      INTEGER(KIND=JWIM), INTENT(IN) :: NFIELDS
+      INTEGER(KIND=JWIM), INTENT(IN) :: NGPTOTG
+      INTEGER(KIND=JWIM), INTENT(IN) :: NC
+      INTEGER(KIND=JWIM), INTENT(IN) :: NR
+      INTEGER(KIND=JWIM), INTENT(IN) :: IGRIB_HANDLE
+      REAL(KIND=JWRB), INTENT(IN) :: RMISS
+      REAL(KIND=JWRB), INTENT(IN) :: ZRCHAR
+      REAL(KIND=JWRB), INTENT(INOUT) :: FIELDS(NGPTOTG,NFIELDS)
+      INTEGER(KIND=JWIM), INTENT(IN) :: NATMFLX
+      LOGICAL, INTENT(INOUT) :: LWCUR
+      LOGICAL, INTENT(INOUT) :: LWSTOKES
+      INTEGER(KIND=JWIM), INTENT(IN) :: NWVFIELDS
+      REAL(KIND=JWRB), INTENT(INOUT) :: WVFLDG(:,:,:)
+      INTEGER(KIND=JWIM), INTENT(IN) :: NLONW
+      INTEGER(KIND=JWIM), INTENT(IN) :: NLATW
+      LOGICAL, INTENT(INOUT) :: LDSTOP
+      LOGICAL, INTENT(INOUT) :: LDWRRE
+      LOGICAL, INTENT(OUT) :: LDRESTARTED
+      REAL(KIND=JWRB), INTENT(OUT) :: ZDELATM(NLATW)
+      LOGICAL, INTENT(INOUT) :: LDWCOUNORMS
+      LOGICAL, INTENT(IN) :: LDNORMWAMOUT_GLOBAL
+      INTEGER(KIND=JWIM), INTENT(INOUT) :: MASK_IN(NGPTOTG)
+      INTEGER(KIND=JWIM), INTENT(INOUT) :: MASK_OUT(NLONW,NLATW)
+      LOGICAL, INTENT(INOUT) :: FRSTIME
+      INTEGER(KIND=JWIM), INTENT(INOUT) :: NADV
+      REAL(KIND=JWRB), INTENT(IN) :: PRPLRADI
+      REAL(KIND=JWRB), INTENT(IN) :: PRPLRG
+      REAL(KIND=JWRB), INTENT(IN) :: RNU_ATM
+      REAL(KIND=JWRB), INTENT(IN) :: RNUM_ATM
+      INTEGER(KIND=JWIM), INTENT(IN) :: IDATE_TIME_WINDOW_END
+      INTEGER(KIND=JWIM), INTENT(IN) :: NSTEP
+      LOGICAL, INTENT(IN) :: LDIFS_IO_SERV_ENABLED
+
+      REAL(KIND=JWRB), INTENT(INOUT) :: TIME1(3)
+END SUBROUTINE WAVEMDL
+end interface

@@ -1,0 +1,8 @@
+interface
+SUBROUTINE USERIN (IFORCA, LWCUR)
+ use parkind_wave, only:&
+ & jwim
+ INTEGER(KIND=JWIM), INTENT(OUT) :: IFORCA
+ LOGICAL, INTENT(IN) :: LWCUR
+END SUBROUTINE USERIN
+end interface

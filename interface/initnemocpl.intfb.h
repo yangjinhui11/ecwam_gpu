@@ -1,0 +1,9 @@
+interface
+SUBROUTINE INITNEMOCPL(BLK2LOC)
+ USE YOWDRVTYPE , ONLY : WVGRIDLOC
+ use yowgrid , only:&
+ & nproma_wam,&
+ & nchnk
+ TYPE(WVGRIDLOC), INTENT(IN) :: BLK2LOC
+END SUBROUTINE INITNEMOCPL
+end interface

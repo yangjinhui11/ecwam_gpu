@@ -1,0 +1,7 @@
+interface
+REAL(KIND=JWRB) FUNCTION TRANSF_SNL(XK0,D,XNU,SIG_TH)
+ use parkind_wave, only:&
+ & jwrb
+ REAL(KIND=JWRB), INTENT(IN) :: XK0,D,XNU,SIG_TH
+END FUNCTION TRANSF_SNL
+end interface

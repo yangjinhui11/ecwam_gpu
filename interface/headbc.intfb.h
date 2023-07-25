@@ -1,0 +1,9 @@
+interface
+ SUBROUTINE HEADBC (NBOUNC, IDELPRO, TH0, FR1, IUOUT, IU06)
+ use parkind_wave, only:&
+ & jwim,&
+ & jwrb
+ INTEGER(KIND=JWIM), INTENT(IN) :: NBOUNC, IDELPRO, IUOUT, IU06
+ REAL(KIND=JWRB), INTENT(IN) :: TH0, FR1
+ END SUBROUTINE HEADBC
+end interface

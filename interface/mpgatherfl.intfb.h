@@ -1,0 +1,14 @@
+interface
+ SUBROUTINE MPGATHERFL(IRECV, NBLKS, NBLKE, KINF, KSUP, MINF, MSUP, FL)
+ use parkind_wave, only:&
+ & jwim,&
+ & jwrb
+ use yowparam , only:&
+ & niblo
+ use yowmpp , only:&
+ & nproc
+ INTEGER(KIND=JWIM), INTENT(IN) :: IRECV, KINF, KSUP, MINF, MSUP
+ INTEGER(KIND=JWIM), DIMENSION(NPROC), INTENT(IN) :: NBLKS, NBLKE
+ REAL(KIND=JWRB), DIMENSION(NIBLO,KINF:KSUP,MINF:MSUP), INTENT(INOUT) :: FL
+ END SUBROUTINE MPGATHERFL
+end interface

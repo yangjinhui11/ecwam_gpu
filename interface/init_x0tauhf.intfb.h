@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE INIT_X0TAUHF
+ END SUBROUTINE INIT_X0TAUHF
+end interface

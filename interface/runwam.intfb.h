@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE RUNWAM
+ END SUBROUTINE RUNWAM
+end interface

@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE NLWEIGT
+ END SUBROUTINE NLWEIGT
+end interface

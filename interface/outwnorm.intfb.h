@@ -1,0 +1,11 @@
+interface
+ SUBROUTINE OUTWNORM(LDREPROD, BOUT)
+ use parkind_wave, only:&
+ & jwrb
+ use yowcout , only:&
+ & niprmout
+ USE YOWGRID , ONLY : NPROMA_WAM, NCHNK
+ LOGICAL, INTENT(IN) :: LDREPROD
+ REAL(KIND=JWRB), DIMENSION(NPROMA_WAM, NIPRMOUT, NCHNK), INTENT(IN) :: BOUT
+ END SUBROUTINE OUTWNORM
+end interface

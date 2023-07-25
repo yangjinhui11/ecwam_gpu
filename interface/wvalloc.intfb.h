@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE WVALLOC
+ END SUBROUTINE WVALLOC
+end interface

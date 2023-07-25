@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE MTABS
+ END SUBROUTINE MTABS
+end interface

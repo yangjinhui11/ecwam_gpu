@@ -1,0 +1,14 @@
+interface
+ SUBROUTINE MWP1 (KIJS, KIJL, F, MEANWP1)
+ use parkind_wave, only:&
+ & jwim,&
+ & jwrb
+ use yowparam , only:&
+ & nang,&
+ & nfre
+ USE, INTRINSIC :: IEEE_EXCEPTIONS
+ INTEGER(KIND=JWIM), INTENT(IN) :: KIJS, KIJL
+ REAL(KIND=JWRB), INTENT(IN) :: F(KIJS:KIJL,NANG,NFRE)
+ REAL(KIND=JWRB), DIMENSION(KIJS:KIJL), INTENT(OUT) :: MEANWP1
+ END SUBROUTINE MWP1
+end interface

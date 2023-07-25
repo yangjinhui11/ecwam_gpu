@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE MFREDIR
+ END SUBROUTINE MFREDIR
+end interface

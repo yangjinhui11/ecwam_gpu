@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE MPUSERIN
+ END SUBROUTINE MPUSERIN
+end interface

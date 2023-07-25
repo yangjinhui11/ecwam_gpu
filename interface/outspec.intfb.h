@@ -1,0 +1,13 @@
+interface
+SUBROUTINE OUTSPEC (FL1, FF_NOW)
+ use parkind_wave, only:&
+ & jwrb
+ USE YOWDRVTYPE , ONLY : FORCING_FIELDS
+ use yowgrid , only:&
+ & nproma_wam,&
+ & nchnk
+ USE YOWPARAM , ONLY : NANG ,NFRE
+ REAL(KIND=JWRB), DIMENSION(NPROMA_WAM, NANG, NFRE, NCHNK), INTENT(IN) :: FL1
+TYPE(FORCING_FIELDS), INTENT(INOUT) :: FF_NOW
+END SUBROUTINE OUTSPEC
+end interface

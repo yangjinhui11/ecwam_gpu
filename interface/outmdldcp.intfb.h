@@ -1,0 +1,4 @@
+interface
+SUBROUTINE OUTMDLDCP
+END SUBROUTINE OUTMDLDCP
+end interface

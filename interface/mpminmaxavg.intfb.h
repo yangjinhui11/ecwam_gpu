@@ -1,0 +1,17 @@
+interface
+SUBROUTINE MPMINMAXAVG(LLGLOBAL, IRECV, LDREPROD, BOUT, WNORM)
+ use parkind_wave, only:&
+ & jwim,&
+ & jwrb
+ use yowcout , only:&
+ & niprmout
+ use yowgrid , only:&
+ & nproma_wam,&
+ & nchnk
+ LOGICAL, INTENT(IN) :: LLGLOBAL
+ INTEGER(KIND=JWIM), INTENT(IN) :: IRECV
+ LOGICAL, INTENT(IN) :: LDREPROD
+ REAL(KIND=JWRB), DIMENSION(NPROMA_WAM, NIPRMOUT, NCHNK), INTENT(IN) :: BOUT
+ REAL(KIND=JWRB),DIMENSION(4, NIPRMOUT), INTENT(OUT) :: WNORM
+END SUBROUTINE MPMINMAXAVG
+end interface

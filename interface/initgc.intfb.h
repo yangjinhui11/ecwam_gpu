@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE INITGC
+ END SUBROUTINE INITGC
+end interface

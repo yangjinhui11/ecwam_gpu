@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE SECONDHH
+ END SUBROUTINE SECONDHH
+end interface

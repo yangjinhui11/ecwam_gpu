@@ -1,0 +1,4 @@
+interface
+ SUBROUTINE INISNONLIN
+ END SUBROUTINE INISNONLIN
+end interface
