@@ -1,0 +1,405 @@
+! (C) Copyright 1989- ECMWF.
+!
+! This software is licensed under the terms of the Apache Licence Version 2.0
+! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+! In applying this licence, ECMWF does not waive the privileges and immunities
+! granted to it by virtue of its status as an intergovernmental organisation
+! nor does it submit to any jurisdiction.
+!
+MODULE IMPLSCH_SCC_MOD
+  CONTAINS
+  SUBROUTINE IMPLSCH_SCC (KIJS, KIJL, FL1, WAVNUM, CGROUP, CIWA, CINV, XK2CG, STOKFAC, EMAXDPT, INDEP, DEPTH, IOBND, IODP, AIRD,  &
+  & WDWAVE, CICOVER, WSWAVE, WSTAR, UFRIC, TAUW, TAUWDIR, Z0M, Z0B, CHRNCK, CITHICK, NEMOUSTOKES, NEMOVSTOKES, NEMOSTRN,  &
+  & NPHIEPS, NTAUOC, NSWH, NMWP, NEMOTAUX, NEMOTAUY, NEMOWSWAVE, NEMOPHIF, WSEMEAN, WSFMEAN, USTOKES, VSTOKES, STRNMS, TAUXD,  &
+  & TAUYD, TAUOCXD, TAUOCYD, TAUOC, PHIOCD, PHIEPS, PHIAW, MIJ, XLLWS)
+    
+    ! ----------------------------------------------------------------------
+    
+    !**** *IMPLSCH* - IMPLICIT SCHEME FOR TIME INTEGRATION OF SOURCE
+    !****             FUNCTIONS.
+    
+    
+    !*    PURPOSE.
+    !     --------
+    
+    !       THE IMPLICIT SCHEME ENABLES THE USE OF A TIMESTEP WHICH IS
+    !       LARGE COMPARED WITH THE CHARACTERISTIC DYNAMIC TIME SCALE.
+    !       THE SCHEME IS REQUIRED FOR THE HIGH FREQUENCIES WHICH
+    !       RAPIDLY ADJUST TO A QUASI-EQUILIBRIUM.
+    
+    !**   INTERFACE.
+    !     ----------
+    
+    !       *CALL* *IMPLSCH (KIJS, KIJL, FL1,
+    !    &                   WVPRPT,
+    !    &                   WVENVI, FF_NOW,
+    !    &                   INTFLDS, WAM2NEMO,
+    !    &                   MIJ,  XLLWS)
+    !      *KIJS*    - LOCAL INDEX OF FIRST GRIDPOINT
+    !      *KIJL*    - LOCAL INDEX OF LAST GRIDPOINT
+    !      *FL1*     - FREQUENCY SPECTRUM(INPUT AND OUTPUT).
+    !      *WVPRPT*  - WAVE PROPERTIES FIELDS
+    !      *WVENVI*  - WAVE ENVIRONMENT
+    !      *FF_NOW*    FORCING FIELDS
+    !      *INTFLDS*   INTEGRATED/DERIVED PARAMETERS
+    !      *WAM2NEMO*  WAVE FIELDS PASSED TO NEMO
+    !      *MIJ*       LAST FREQUENCY INDEX OF THE PROGNOSTIC RANGE.
+    !      *XLLWS*     TOTAL WINDSEA MASK FROM INPUT SOURCE TERM
+    
+    
+    !     METHOD.
+    !     -------
+    
+    !       THE SPECTRUM AT TIME (TN+1) IS COMPUTED AS
+    !       FN+1=FN+DELT*(SN+SN+1)/2., WHERE SN IS THE TOTAL SOURCE
+    !       FUNCTION AT TIME TN, SN+1=SN+(DS/DF)*DF - ONLY THE DIAGONAL
+    !       TERMS OF THE FUNCTIONAL MATRIX DS/DF ARE YOWPUTED, THE
+    !       NONDIAGONAL TERMS ARE NEGLIGIBLE.
+    !       THE ROUTINE IS CALLED AFTER PROPAGATION FOR TIME PERIOD
+    !       BETWEEN TWO PROPAGATION CALLS - ARRAY FL1 CONTAINS THE
+    !       SPECTRUM AND FL IS USED AS AN INTERMEDIATE STORAGE FOR THE
+    !       DIAGONAL TERM OF THE FUNCTIONAL MATRIX.
+    
+    
+    !     REFERENCE.
+    !     ----------
+    
+    !       S. HASSELMANN AND K. HASSELMANN, "A GLOBAL WAVE MODEL",
+    !       30/6/85 (UNPUBLISHED NOTE)
+    
+    ! ----------------------------------------------------------------------
+    
+    USE WNFLUXES_SCC_MOD, ONLY: WNFLUXES_SCC
+    USE STOKESTRN_SCC_MOD, ONLY: STOKESTRN_SCC
+    USE SNONLIN_SCC_MOD, ONLY: SNONLIN_SCC
+    USE SINFLX_SCC_MOD, ONLY: SINFLX_SCC
+    USE SETICE_SCC_MOD, ONLY: SETICE_SCC
+    USE SDIWBK_SCC_MOD, ONLY: SDIWBK_SCC
+    USE SDISSIP_SCC_MOD, ONLY: SDISSIP_SCC
+    USE SDEPTHLIM_SCC_MOD, ONLY: SDEPTHLIM_SCC
+    USE IMPHFTAIL_SCC_MOD, ONLY: IMPHFTAIL_SCC
+    USE SBOTTOM_SCC_MOD, ONLY: SBOTTOM_SCC
+    USE FKMEAN_SCC_MOD, ONLY: FKMEAN_SCC
+    USE FEMEANWS_SCC_MOD, ONLY: FEMEANWS_SCC
+    USE CIWABR_SCC_MOD, ONLY: CIWABR_SCC
+    USE PARKIND_WAVE, ONLY: JWIM, JWRB, JWRU, JWRO
+    USE YOWDRVTYPE, ONLY: ENVIRONMENT, FREQUENCY, FORCING_FIELDS, INTGT_PARAM_FIELDS, WAVE2OCEAN
+    
+    USE YOWCOUP, ONLY: LWFLUX, LWVFLX_SNL, LWNEMOCOU, LWNEMOCOUSTRN
+    USE YOWCOUT, ONLY: LWFLUXOUT
+    USE YOWFRED, ONLY: FR, TH, COFRM4, FLMAX
+    USE YOWICE, ONLY: FLMIN, LCIWABR, LICERUN, LMASKICE
+    USE YOWPARAM, ONLY: NANG, NFRE, LLUNSTR
+    USE YOWPCONS, ONLY: WSEMEAN_MIN, ROWATERM1
+    USE YOWSTAT, ONLY: IDELT, LBIWBK
+    USE YOWWNDG, ONLY: ICODE, ICODE_CPL
+    
+    
+    IMPLICIT NONE
+    ! ----------------------------------------------------------------------
+    
+    
+    INTEGER(KIND=JWIM), INTENT(IN) :: KIJS, KIJL
+    REAL(KIND=JWRB), INTENT(INOUT), DIMENSION(KIJL, NANG, NFRE) :: FL1
+    REAL(KIND=JWRB), INTENT(IN), DIMENSION(KIJL, NFRE) :: WAVNUM
+    REAL(KIND=JWRB), INTENT(IN), DIMENSION(KIJL, NFRE) :: CGROUP
+    REAL(KIND=JWRB), INTENT(IN), DIMENSION(KIJL, NFRE) :: CIWA
+    REAL(KIND=JWRB), INTENT(IN), DIMENSION(KIJL, NFRE) :: CINV
+    REAL(KIND=JWRB), INTENT(IN), DIMENSION(KIJL, NFRE) :: XK2CG
+    REAL(KIND=JWRB), INTENT(IN), DIMENSION(KIJL, NFRE) :: STOKFAC
+    
+    REAL(KIND=JWRB), INTENT(IN), DIMENSION(KIJL) :: EMAXDPT
+    REAL(KIND=JWRB), INTENT(IN), DIMENSION(KIJL) :: DEPTH
+    INTEGER(KIND=JWIM), INTENT(IN), DIMENSION(KIJL) :: INDEP
+    INTEGER(KIND=JWIM), INTENT(IN), DIMENSION(KIJL) :: IODP
+    INTEGER(KIND=JWIM), INTENT(IN), DIMENSION(KIJL) :: IOBND
+    
+    REAL(KIND=JWRB), INTENT(IN), DIMENSION(KIJL) :: WDWAVE, CICOVER, AIRD, WSTAR, CITHICK
+    REAL(KIND=JWRB), INTENT(INOUT), DIMENSION(KIJL) :: UFRIC, TAUW, TAUWDIR, Z0M, Z0B, CHRNCK, WSWAVE
+    REAL(KIND=JWRB), INTENT(INOUT), DIMENSION(KIJL) :: WSEMEAN, WSFMEAN, USTOKES, VSTOKES, STRNMS
+    REAL(KIND=JWRB), INTENT(INOUT), DIMENSION(KIJL) :: TAUXD, TAUYD, TAUOCXD, TAUOCYD, TAUOC, PHIOCD
+    REAL(KIND=JWRB), INTENT(INOUT), DIMENSION(KIJL) :: PHIEPS, PHIAW
+    REAL(KIND=JWRO), INTENT(INOUT), DIMENSION(KIJL) :: NEMOUSTOKES, NEMOVSTOKES, NEMOSTRN
+    REAL(KIND=JWRO), INTENT(INOUT), DIMENSION(KIJL) :: NPHIEPS, NTAUOC, NSWH, NMWP, NEMOTAUX
+    REAL(KIND=JWRO), INTENT(INOUT), DIMENSION(KIJL) :: NEMOTAUY, NEMOWSWAVE, NEMOPHIF
+    INTEGER(KIND=JWIM), INTENT(OUT), DIMENSION(KIJL) :: MIJ
+    REAL(KIND=JWRB), INTENT(OUT), DIMENSION(KIJL, NANG, NFRE) :: XLLWS
+    
+    
+    INTEGER(KIND=JWIM) :: IJ, K, M
+    
+    REAL(KIND=JWRB) :: DELT, DELTM, XIMP, DELT5
+    REAL(KIND=JWRB) :: GTEMP1, GTEMP2, FLHAB
+    REAL(KIND=JWRB), DIMENSION(KIJL) :: RAORW
+    REAL(KIND=JWRB), DIMENSION(KIJL) :: EMEAN, FMEAN, HALP
+    REAL(KIND=JWRB), DIMENSION(KIJL) :: EMEANWS
+    REAL(KIND=JWRB), DIMENSION(KIJL) :: FMEANWS
+    REAL(KIND=JWRB) :: USFM
+    REAL(KIND=JWRB), DIMENSION(KIJL) :: F1MEAN, AKMEAN, XKMEAN
+    REAL(KIND=JWRB), DIMENSION(KIJL) :: PHIWA
+    
+    REAL(KIND=JWRB), DIMENSION(KIJL, NANG) :: FLM
+    REAL(KIND=JWRB), DIMENSION(KIJL, NANG) :: COSWDIF, SINWDIF2
+    REAL(KIND=JWRB), DIMENSION(KIJL, NFRE) :: RHOWGDFTH
+    !     *FLD* DIAGONAL MATRIX OF FUNCTIONAL DERIVATIVE
+    !     *SL*  TOTAL SOURCE FUNCTION ARRAY.
+    !     *SPOS* : POSITIVE SINPUT ONLY
+    REAL(KIND=JWRB), DIMENSION(KIJL, NANG, NFRE) :: FLD, SL, SPOS
+    REAL(KIND=JWRB), DIMENSION(KIJL, NANG, NFRE) :: CIREDUC
+    REAL(KIND=JWRB), DIMENSION(KIJL, NANG, NFRE) :: SSOURCE
+    
+    LOGICAL :: LCFLX
+!$acc routine vector
+!$acc data present( FL1, WAVNUM, CGROUP, CIWA, CINV, XK2CG, STOKFAC, EMAXDPT, INDEP, DEPTH, IOBND, IODP, AIRD, WDWAVE, CICOVER,  &
+!$acc & WSWAVE, WSTAR, UFRIC, TAUW, TAUWDIR, Z0M, Z0B, CHRNCK, CITHICK, NEMOUSTOKES, NEMOVSTOKES, NEMOSTRN, NPHIEPS, NTAUOC,  &
+!$acc & NSWH, NMWP, NEMOTAUX, NEMOTAUY, NEMOWSWAVE, NEMOPHIF, WSEMEAN, WSFMEAN, USTOKES, VSTOKES, STRNMS, TAUXD, TAUYD, TAUOCXD,  &
+!$acc & TAUOCYD, TAUOC, PHIOCD, PHIEPS, PHIAW, MIJ, XLLWS )
+    
+    print*,"implsch.scc start"
+    ! ----------------------------------------------------------------------
+    
+    
+    
+    !*    1. INITIALISATION.
+    !        ---------------
+    
+    DELT = IDELT
+    DELTM = 1.0_JWRB / DELT
+    XIMP = 1.0_JWRB
+    DELT5 = XIMP*DELT
+    
+    LCFLX = LWFLUX .or. LWFLUXOUT .or. LWNEMOCOU
+!$loki separator
+!$acc loop vector
+    DO IJ=KIJS,KIJL
+      
+      
+      RAORW(IJ) = MAX(AIRD(IJ), 1.0_JWRB)*ROWATERM1
+      
+!$acc loop seq
+      DO K=1,NANG
+        COSWDIF(IJ, K) = COS(TH(K) - WDWAVE(IJ))
+        SINWDIF2(IJ, K) = SIN(TH(K) - WDWAVE(IJ))**2
+      END DO
+      
+      ! ----------------------------------------------------------------------
+      
+      !*    2. COMPUTATION OF IMPLICIT INTEGRATION.
+      !        ------------------------------------
+      
+      !         INTEGRATION IS DONE FROM CDATE UNTIL CDTPRO FOR A BLOCK
+      !         OF LATITUDES BETWEEN PROPAGATION CALLS.
+      
+      
+      !     REDUCE WAVE ENERGY IF LARGER THAN DEPTH LIMITED WAVE HEIGHT
+    END DO
+    print*,"implsch.scc SDEPTHLIM_SCC start"
+    IF (LBIWBK) THEN
+      CALL SDEPTHLIM_SCC(KIJS, KIJL, EMAXDPT, FL1)
+    END IF
+    
+    !*    2.2 COMPUTE MEAN PARAMETERS.
+    !        ------------------------
+    
+    print*,"implsch.scc FKMEAN_SCC start"
+    CALL FKMEAN_SCC(KIJS, KIJL, FL1, WAVNUM, EMEAN, FMEAN, F1MEAN, AKMEAN, XKMEAN)
+    
+!$acc loop vector
+    DO IJ=KIJS,KIJL
+      
+!$acc loop seq
+      DO K=1,NANG
+        FLM(IJ, K) = FLMIN*MAX(0.0_JWRB, COSWDIF(IJ, K))**2
+      END DO
+      
+      !     COMPUTE DAMPING COEFFICIENT DUE TO FRICTION ON BOTTOM OF THE SEA ICE.
+      !!! testing sea ice attenuation (might need to restrict usage when needed)
+    END DO
+    IF (LCIWABR) THEN
+      print*,"implsch.scc CIWABR_SCC start"
+      CALL CIWABR_SCC(KIJS, KIJL, CICOVER, FL1, WAVNUM, CGROUP, CIREDUC)
+      
+!$acc loop vector
+      DO IJ=KIJS,KIJL
+!$acc loop seq
+        DO M=1,NFRE
+!$acc loop seq
+          DO K=1,NANG
+            CIREDUC(IJ, K, M) = CIWA(IJ, M)*CIREDUC(IJ, K, M)
+          END DO
+        END DO
+      END DO
+    ELSE
+      
+!$acc loop vector
+      DO IJ=KIJS,KIJL
+!$acc loop seq
+        DO M=1,NFRE
+!$acc loop seq
+          DO K=1,NANG
+            CIREDUC(IJ, K, M) = CIWA(IJ, M)
+          END DO
+        END DO
+      END DO
+    END IF
+    
+    ! ----------------------------------------------------------------------
+    
+    !*    2.3 COMPUTATION OF SOURCE FUNCTIONS.
+    !         --------------------------------
+    
+    !*    2.3.1 ITERATIVELY UPDATE STRESS AND COMPUTE WIND INPUT TERMS.
+    !           -------------------------------------------------------
+    
+    print*,"implsch.scc FKMEAN_SCC start"
+    CALL SINFLX_SCC(1, KIJS, KIJL, .true., FL1, WAVNUM, CINV, XK2CG, WSWAVE, WDWAVE, AIRD, RAORW, WSTAR, CICOVER, COSWDIF,  &
+    & SINWDIF2, FMEAN, HALP, FMEANWS, FLM, UFRIC, TAUW, TAUWDIR, Z0M, Z0B, CHRNCK, PHIWA, FLD, SL, SPOS, MIJ, RHOWGDFTH, XLLWS)
+    CALL SINFLX_SCC(2, KIJS, KIJL, .true., FL1, WAVNUM, CINV, XK2CG, WSWAVE, WDWAVE, AIRD, RAORW, WSTAR, CICOVER, COSWDIF,  &
+    & SINWDIF2, FMEAN, HALP, FMEANWS, FLM, UFRIC, TAUW, TAUWDIR, Z0M, Z0B, CHRNCK, PHIWA, FLD, SL, SPOS, MIJ, RHOWGDFTH, XLLWS)
+    
+    !     2.3.3 ADD THE OTHER SOURCE TERMS.
+    !           ---------------------------
+    
+    CALL SDISSIP_SCC(KIJS, KIJL, FL1, FLD, SL, INDEP, WAVNUM, XK2CG, EMEAN, F1MEAN, XKMEAN, UFRIC, COSWDIF, RAORW)
+    
+!$acc loop vector
+    DO IJ=KIJS,KIJL
+      
+      !     Save source term contributions relevant for the calculation of ocean fluxes
+      IF (LCFLX .and. .not.LWVFLX_SNL) THEN
+!$acc loop seq
+        DO M=1,NFRE
+!$acc loop seq
+          DO K=1,NANG
+            SSOURCE(IJ, K, M) = SL(IJ, K, M)
+          END DO
+        END DO
+      END IF
+      
+    END DO
+    CALL SNONLIN_SCC(KIJS, KIJL, FL1, FLD, SL, WAVNUM, DEPTH, AKMEAN)
+    
+!$acc loop vector
+    DO IJ=KIJS,KIJL
+      
+      IF (LCFLX .and. LWVFLX_SNL) THEN
+        !     Save source term contributions relevant for the calculation of ocean fluxes
+        !!!!!!  SL must only contain contributions contributed to fluxes into the oceans
+        !       MODULATE SL BY IMPLICIT FACTOR
+!$acc loop seq
+        DO M=1,NFRE
+!$acc loop seq
+          DO K=1,NANG
+            GTEMP1 = MAX((1.0_JWRB - DELT5*FLD(IJ, K, M)), 1.0_JWRB)
+            SSOURCE(IJ, K, M) = SL(IJ, K, M) / GTEMP1
+          END DO
+        END DO
+      END IF
+      
+      
+    END DO
+    CALL SDIWBK_SCC(KIJS, KIJL, FL1, FLD, SL, DEPTH, EMAXDPT, EMEAN, F1MEAN)
+    
+    CALL SBOTTOM_SCC(KIJS, KIJL, FL1, FLD, SL, WAVNUM, DEPTH)
+    
+!$acc loop vector
+    DO IJ=KIJS,KIJL
+      
+      ! ----------------------------------------------------------------------
+      
+      !*    2.4 COMPUTATION OF NEW SPECTRA.
+      !         ---------------------------
+      
+      !     INCREASE OF SPECTRUM IN A TIME STEP IS LIMITED TO A FINITE
+      !     FRACTION OF A TYPICAL F**(-4) EQUILIBRIUM SPECTRUM.
+      
+      USFM = UFRIC(IJ)*MAX(FMEANWS(IJ), FMEAN(IJ))
+      
+      IF (LLUNSTR) THEN
+!$acc loop seq
+        DO K=1,NANG
+!$acc loop seq
+          DO M=1,NFRE
+            GTEMP1 = MAX((1.0_JWRB - DELT5*FLD(IJ, K, M)), 1.0_JWRB)
+            GTEMP2 = DELT*SL(IJ, K, M) / GTEMP1
+            FLHAB = ABS(GTEMP2)
+            FLHAB = MIN(FLHAB, USFM*COFRM4(M)*DELT)
+            FL1(IJ, K, M) = FL1(IJ, K, M) + IOBND(IJ)*SIGN(FLHAB, GTEMP2)
+            FL1(IJ, K, M) = MAX(IODP(IJ)*CIREDUC(IJ, K, M)*FL1(IJ, K, M), FLM(IJ, K))
+            SSOURCE(IJ, K, M) = SSOURCE(IJ, K, M) + DELTM*MIN(FLMAX(M) - FL1(IJ, K, M), 0.0_JWRB)
+            FL1(IJ, K, M) = MIN(FL1(IJ, K, M), FLMAX(M))
+          END DO
+        END DO
+      ELSE
+!$acc loop seq
+        DO K=1,NANG
+!$acc loop seq
+          DO M=1,NFRE
+            GTEMP1 = MAX((1.0_JWRB - DELT5*FLD(IJ, K, M)), 1.0_JWRB)
+            GTEMP2 = DELT*SL(IJ, K, M) / GTEMP1
+            FLHAB = ABS(GTEMP2)
+            FLHAB = MIN(FLHAB, USFM*COFRM4(M)*DELT)
+            FL1(IJ, K, M) = FL1(IJ, K, M) + SIGN(FLHAB, GTEMP2)
+            FL1(IJ, K, M) = MAX(CIREDUC(IJ, K, M)*FL1(IJ, K, M), FLM(IJ, K))
+            SSOURCE(IJ, K, M) = SSOURCE(IJ, K, M) + DELTM*MIN(FLMAX(M) - FL1(IJ, K, M), 0.0_JWRB)
+            FL1(IJ, K, M) = MIN(FL1(IJ, K, M), FLMAX(M))
+          END DO
+        END DO
+      END IF
+      
+    END DO
+    IF (LCFLX) THEN
+      CALL WNFLUXES_SCC(KIJS, KIJL, MIJ, RHOWGDFTH, CINV, SSOURCE, CICOVER, PHIWA, EMEAN, F1MEAN, WSWAVE, WDWAVE, UFRIC, AIRD,  &
+      & NPHIEPS, NTAUOC, NSWH, NMWP, NEMOTAUX, NEMOTAUY, NEMOWSWAVE, NEMOPHIF, TAUXD, TAUYD, TAUOCXD, TAUOCYD, TAUOC, PHIOCD,  &
+      & PHIEPS, PHIAW, .true.)
+    END IF
+    ! ----------------------------------------------------------------------
+    
+    !*    2.5 REPLACE DIAGNOSTIC PART OF SPECTRA BY A F**(-5) TAIL.
+    !         -----------------------------------------------------
+    
+    CALL FKMEAN_SCC(KIJS, KIJL, FL1, WAVNUM, EMEAN, FMEAN, F1MEAN, AKMEAN, XKMEAN)
+    
+    !     MEAN FREQUENCY CHARACTERISTIC FOR WIND SEA
+    CALL FEMEANWS_SCC(KIJS, KIJL, FL1, XLLWS, FMEANWS, EMEANWS)
+    
+    CALL IMPHFTAIL_SCC(KIJS, KIJL, MIJ, FLM, WAVNUM, XK2CG, FL1)
+    
+!$acc loop vector
+    DO IJ=KIJS,KIJL
+      
+      
+      !     UPDATE WINDSEA VARIANCE AND MEAN FREQUENCY IF PASSED TO ATMOSPHERE
+      !     ------------------------------------------------------------------
+      IF (LWFLUX) THEN
+        IF (EMEANWS(IJ) < WSEMEAN_MIN) THEN
+          WSEMEAN(IJ) = WSEMEAN_MIN
+          WSFMEAN(IJ) = 2._JWRB*FR(NFRE)
+        ELSE
+          WSEMEAN(IJ) = EMEANWS(IJ)
+          WSFMEAN(IJ) = FMEANWS(IJ)
+        END IF
+      END IF
+      
+      
+      !*    2.6 SET FL1 ON ICE POINTS TO ZERO
+      !         -----------------------------
+      
+    END DO
+    IF (LICERUN .and. LMASKICE) THEN
+      CALL SETICE_SCC(KIJS, KIJL, FL1, CICOVER, COSWDIF)
+    END IF
+    
+    
+    !*    2.7 SURFACE STOKES DRIFT AND STRAIN IN SEA ICE
+    !         ------------------------------------------
+    
+    CALL STOKESTRN_SCC(KIJS, KIJL, FL1, WAVNUM, STOKFAC, DEPTH, WSWAVE, WDWAVE, CICOVER, CITHICK, USTOKES, VSTOKES, STRNMS,  &
+    & NEMOUSTOKES, NEMOVSTOKES, NEMOSTRN)
+    
+    ! ----------------------------------------------------------------------
+    
+    
+!$acc end data
+  END SUBROUTINE IMPLSCH_SCC
+END MODULE IMPLSCH_SCC_MOD
